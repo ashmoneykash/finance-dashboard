@@ -69,6 +69,41 @@ def login():
 
     return jsonify({"message": "Login successful", "user_id": user.id}), 200
 
+# Add an expense route
+@app.route('/expenses', methods=['POST'])
+def add_expense():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    date = data.get('date')
+    category = data.get('category')
+    amount = data.get('amount')
+    description = data.get('description')
+
+    if not user_id or not date or not category or not amount:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    new_expense = Expense(user_id=user_id, date=date, category=category, amount=amount, description=description)
+    db.session.add(new_expense)
+    db.session.commit()
+
+    return jsonify({"message": "Expense added successfully"}), 201
+
+# Get all expenses for a user
+@app.route('/expenses/<int:user_id>', methods=['GET'])
+def get_expenses(user_id):
+    expenses = Expense.query.filter_by(user_id=user_id).all()
+    expense_list = []
+    for expense in expenses:
+        expense_list.append({
+            "id": expense.id,
+            "date": expense.date,
+            "category": expense.category,
+            "amount": expense.amount,
+            "description": expense.description
+        })
+
+    return jsonify({"expenses": expense_list}), 200
+
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
