@@ -2,10 +2,15 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import plotly.express as px
 import pandas as pd
+from flask_cors import CORS
+
 
 
 # Initialize the Flask app
 app = Flask(__name__)
+
+CORS(app)# Allow cross-origin requests
+
 
 # Configure the SQLite database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance.db'  # Database file will be created in the project directory
