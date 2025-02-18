@@ -1,5 +1,8 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+import plotly.express as px
+import pandas as pd
+
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -103,6 +106,27 @@ def get_expenses(user_id):
         })
 
     return jsonify({"expenses": expense_list}), 200
+
+    # Visualization route
+@app.route('/visualize/<int:user_id>', methods=['GET'])
+def visualize(user_id):
+    expenses = Expense.query.filter_by(user_id=user_id).all()
+    if not expenses:
+        return jsonify({"error": "No expenses found"}), 404
+
+    # Convert expenses to a DataFrame
+    data = {
+        "Date": [expense.date for expense in expenses],
+        "Category": [expense.category for expense in expenses],
+        "Amount": [expense.amount for expense in expenses]
+    }
+    df = pd.DataFrame(data)
+
+    # Create a bar chart
+    fig = px.bar(df, x="Date", y="Amount", color="Category", title="Monthly Spending by Category")
+    chart_html = fig.to_html(full_html=False)
+
+    return chart_html
 
 # Run the app
 if __name__ == '__main__':
