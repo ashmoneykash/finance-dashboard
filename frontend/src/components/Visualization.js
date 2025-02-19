@@ -1,18 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { visualizeExpenses } from '../services/api';
+import React from 'react';
 
 const Visualization = ({ userId }) => {
-  const [chartHtml, setChartHtml] = useState('');
-
-  useEffect(() => {
-    const fetchVisualization = async () => {
-      const data = await visualizeExpenses(userId);
-      setChartHtml(data);
-    };
-    fetchVisualization();
-  }, [userId]);
-
-  return <div dangerouslySetInnerHTML={{ __html: chartHtml }} />;
+  return (
+    <div>
+      <h2>Expense Visualization</h2>
+      <iframe
+        src={`http://127.0.0.1:5000/visualize/${userId}`}
+        width="100%"
+        height="500px"
+        style={{ border: 'none' }}
+      />
+    </div>
+  );
 };
 
 export default Visualization;
