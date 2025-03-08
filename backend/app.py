@@ -1,16 +1,9 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-import plotly.express as px
 import pandas as pd
-from flask_cors import CORS
-
-
 
 # Initialize the Flask app
 app = Flask(__name__)
-
-CORS(app)# Allow cross-origin requests
-
 
 # Configure the SQLite database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance.db'  # Database file will be created in the project directory
@@ -42,7 +35,6 @@ with app.app_context():
 @app.route('/')
 def home():
     return jsonify({"message": "Welcome to the Finance Dashboard!"})
-
 
 # User registration route
 @app.route('/register', methods=['POST'])
@@ -112,7 +104,7 @@ def get_expenses(user_id):
 
     return jsonify({"expenses": expense_list}), 200
 
-    # Visualization route
+# Visualization route
 @app.route('/visualize/<int:user_id>', methods=['GET'])
 def visualize(user_id):
     expenses = Expense.query.filter_by(user_id=user_id).all()
@@ -127,11 +119,48 @@ def visualize(user_id):
     }
     df = pd.DataFrame(data)
 
-    # Create a bar chart
-    fig = px.bar(df, x="Date", y="Amount", color="Category", title="Monthly Spending by Category")
-    chart_html = fig.to_html(full_html=False)
+    # Group expenses by category and sum the amounts
+    grouped_data = df.groupby("Category")["Amount"].sum().reset_index()
 
-    return chart_html
+    # Convert the grouped data to a dictionary
+    chart_data = {
+        "categories": grouped_data["Category"].tolist(),
+        "amounts": grouped_data["Amount"].tolist()
+    }
+
+    return jsonify(chart_data), 200
+
+# Delete an expense route
+@app.route('/expenses/<int:expense_id>', methods=['DELETE'])
+def delete_expense(expense_id):
+    expense = Expense.query.get(expense_id)
+    if not expense:
+        return jsonify({"error": "Expense not found"}), 404
+
+    db.session.delete(expense)
+    db.session.commit()
+
+    return jsonify({"message": "Expense deleted successfully"}), 200
+
+# Update an expense route
+@app.route('/expenses/<int:expense_id>', methods=['PUT'])
+def update_expense(expense_id):
+    expense = Expense.query.get(expense_id)
+    if not expense:
+        return jsonify({"error": "Expense not found"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    expense.date = data.get('date', expense.date)
+    expense.category = data.get('category', expense.category)
+    expense.amount = data.get('amount', expense.amount)
+    expense.description = data.get('description', expense.description)
+
+    db.session.commit()
+
+    return jsonify({"message": "Expense updated successfully"}), 200
 
 # Run the app
 if __name__ == '__main__':
