@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
 import pandas as pd
 
 # Initialize the Flask app
@@ -11,12 +12,21 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize the database
 db = SQLAlchemy(app)
+bcrypt = Bcrypt()
 
 # Define the User model
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(50), nullable=False)
+    password = db.Column(db.String(128), nullable=False)  # Increased size for hashed passwords
+
+    # Method to set password securely
+    def set_password(self, password):
+        self.password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    # Method to check password validity
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password, password)
 
 # Define the Expense model
 class Expense(db.Model):
@@ -39,21 +49,20 @@ def home():
 # User registration route
 @app.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    data = request.json
+    username = data['username']
+    password = data['password']
 
-    if not username or not password:
-        return jsonify({"error": "Username and password are required"}), 400
+    existing_user = User.query.filter_by(username=username).first()
+    if existing_user:
+        return jsonify({'message': 'Username already exists'}), 400
 
-    if User.query.filter_by(username=username).first():
-        return jsonify({"error": "Username already exists"}), 400
-
-    new_user = User(username=username, password=password)
+    new_user = User(username=username)
+    new_user.set_password(password)  # Hashing the password before saving
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"message": "User registered successfully"}), 201
+    return jsonify({'message': 'User registered successfully'}), 201
 
 # User login route
 @app.route('/login', methods=['POST'])
@@ -62,9 +71,11 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    user = User.query.filter_by(username=username, password=password).first()
+    # Find user by username
+    user = User.query.filter_by(username=username).first()
 
-    if not user:
+    # Check if user exists and verify password
+    if not user or not user.check_password(password):
         return jsonify({"error": "Invalid username or password"}), 401
 
     return jsonify({"message": "Login successful", "user_id": user.id}), 200
