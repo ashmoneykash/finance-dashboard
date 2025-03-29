@@ -360,3 +360,5 @@ if __name__ == "__main__":
     auth_window = AuthWindow()
     auth_window.show()
     sys.exit(app.exec_())
+
+    #comment added
